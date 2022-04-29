@@ -3,8 +3,7 @@
 from typing import Optional
 from sentence_transformers import SentenceTransformer
 
-MODELPATH = 'sentence-transformers/xlm-r-distilroberta-base-paraphrase-v1'
-
+MODELPATH = 'xlm-r-distilroberta-base-paraphrase-v1'
 class BERTModel(object):
     """BERTModel"""
     model:object = None
