@@ -25,12 +25,12 @@ class StudentsDict(BaseModel):
     Args:
         BaseModel : inherit from pydantic BaseModel to validate the input
     """
-    students_dict: Dict[int, str]
+    students_dict: Dict[str, str]
 
 class JsonDictionary(BaseModel):
     """
     StudentsDict output model validation
-        it's a json string contains a List of Dictionaries of int [ids] : float [scores]
+        it's a json string contains a List of Dictionaries of str [ids] : float [scores]
 
     Args:
         BaseModel : inherit from pydantic BaseModel to validate the output
@@ -40,26 +40,26 @@ class JsonDictionary(BaseModel):
 class NormalDictionary(BaseModel):
     """
     StudentsDict output model validation
-        it's a json string contains a List of Dictionaries of int [ids] : float [scores]
+        it's a json string contains a List of Dictionaries of str [ids] : float [scores]
 
     Args:
         BaseModel : inherit from pydantic BaseModel to validate the output
     """
     plagiarism_results : List[
-        Dict[int,
-            Dict[int,float]
+        Dict[str,
+            Dict[str,float]
         ]]
 
 
 class GradingResponse(BaseModel):
     """
     StudentsDict output model validation
-        it's a json string contains a List of Dictionaries of int [ids] : float [scores]
+        it's a json string contains a List of Dictionaries of str [ids] : float [scores]
 
     Args:
         BaseModel : inherit from pydantic BaseModel to validate the output
     """
-    grads : Dict[int,float]
+    grads : Dict[str,float]
 
 @app.get(path="/")
 def read_root(query: str):
@@ -71,10 +71,10 @@ def read_root(query: str):
         query (str): query string
 
     Returns:
-        str: \"message\": query
+        str: \"message\": hi
     """
 
-    return json.dumps({"message": query})
+    return json.dumps({"message": "Hi"})
 
 
 @app.post("/grading/predict", response_model=GradingResponse)
@@ -85,14 +85,14 @@ def predict_grad(answers: StudentsDict)\
 
     Args
     ----------
-    answers : dict[int,str]
+    answers : dict[str,str]
         dict of student ids and their answers
         first element is the model answer
         second etc... elements are the students answers
 
     Returns
     -------
-    Dict[int,float]
+    Dict[str,float]
         dict of studetns ids and their grades
 
     example
@@ -110,29 +110,28 @@ def predict_grad(answers: StudentsDict)\
                 }
     """
     ids, answers = dict_to_list(answers.students_dict)
-    print(ids)
     res = GM.predict(answers, ids)
-    return {"grads":res}
+    return {"grades":res}
 
 
 @app.post("/plagiarism/predict", response_model=NormalDictionary)
 def read_predict(students_dict: StudentsDict)\
     -> List[
-        Dict[int,
+        Dict[str,
             Dict[
-                int,float
+                str,float
                 ]]]:
     """
     Predict the pligarism result
 
     Args
     ----------
-    students_dict : dict[int,str]
+    students_dict : dict[str,str]
         dict of student ids and their answers
 
     Returns
     -------
-    dict[int,dict[int,float]]
+    dict[str,dict[str,float]]
         dict of cheating studetns ids
         and their probabilities of plagiarism with other students
 
@@ -142,7 +141,6 @@ def read_predict(students_dict: StudentsDict)\
     >>> [{1: {2: 0.98}, 2: {1: 0.98}}]
 
     """
-    print(students_dict.students_dict)
     ids, answers = dict_to_list(students_dict.students_dict)
     res = PM.predict(answers, ids)
     return {"plagiarism_results":res}
