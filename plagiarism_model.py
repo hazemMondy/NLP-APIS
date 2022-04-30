@@ -160,7 +160,7 @@ class PlagiarismModel(object):
                                             np.where(sim >= threshold)[1].tolist()
                                             )
                                         ), # student ids
-                                    sim[sim >= 0.7] # similarity scores
+                                    sim[sim >= threshold] # similarity scores
                                     )
                                 )
                         , sims
