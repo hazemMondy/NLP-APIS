@@ -1,11 +1,13 @@
 """api"""
-from typing import Optional, Dict, List
+from typing import Dict, List
 import json
 from fastapi import FastAPI
 import uvicorn
 from pydantic import BaseModel
 from api_utils import dict_to_list
-import grading_model, transformer_model, plagiarism_model
+import transformer_model
+import grading_model
+import  plagiarism_model
 
 BERT = transformer_model.BERTModel()
 
@@ -24,16 +26,16 @@ class StudentsDict(BaseModel):
 
     Args:
         BaseModel : inherit from pydantic BaseModel to validate the input
-    
+
     Attributes:
         students_dict (dict): students_dict
             contains dicts of the student's answers and their ids
-    
+
     example:
         >>> "students_dict": {
         >>>  "1235dx":
         >>>        "answer_1"
-        >>>    "24463dxcf": 
+        >>>    "24463dxcf":
         >>>         "answer_2"
         >>> }
 
@@ -48,7 +50,7 @@ class PlagiarismResponse(BaseModel):
 
     Args:
         BaseModel : inherit from pydantic BaseModel to validate the output
-    
+
     Attributes:
         scores (List[Dict[str, float]]): scores
             contains a list of dicts of the student's answers and their ids
@@ -72,7 +74,7 @@ class GradingResponse(BaseModel):
 
     Args:
         BaseModel : inherit from pydantic BaseModel to validate the output
-    
+
     Attributes:
         grades ([Dict[str, float]]): scores
             contains a list of dicts of the student's grades and their ids
@@ -81,7 +83,7 @@ class GradingResponse(BaseModel):
         >>> "students_dict": {
         >>>  "1235dx":
         >>>        "answer_1"
-        >>>    "24463dxcf": 
+        >>>    "24463dxcf":
         >>>         "answer_2"
         >>> }
 
