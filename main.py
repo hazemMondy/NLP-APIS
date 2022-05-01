@@ -24,26 +24,40 @@ class StudentsDict(BaseModel):
 
     Args:
         BaseModel : inherit from pydantic BaseModel to validate the input
+    
+    Attributes:
+        students_dict (dict): students_dict
+            contains dicts of the student's answers and their ids
+    
+    example:
+        >>> "students_dict": {
+        >>>  "1235dx":
+        >>>        "answer_1"
+        >>>    "24463dxcf": 
+        >>>         "answer_2"
+        >>> }
+
+
     """
     students_dict: Dict[str, str]
 
-class JsonDictionary(BaseModel):
+class PlagiarismResponse(BaseModel):
     """
-    StudentsDict output model validation
+    PlagiarismResponse output model validation
         it's a json string contains a List of Dictionaries of str [ids] : float [scores]
 
     Args:
         BaseModel : inherit from pydantic BaseModel to validate the output
-    """
-    plagiarism_results : str
+    
+    Attributes:
+        scores (List[Dict[str, float]]): scores
+            contains a list of dicts of the student's answers and their ids
 
-class NormalDictionary(BaseModel):
-    """
-    StudentsDict output model validation
-        it's a json string contains a List of Dictionaries of str [ids] : float [scores]
-
-    Args:
-        BaseModel : inherit from pydantic BaseModel to validate the output
+    example:
+        >>> {
+        >>>     "ids": ["1", "2", "3"],
+        >>>     "scores": [0.5, 0.5, 0.5]
+        >>> }
     """
     plagiarism_results : List[
         Dict[str,
@@ -58,11 +72,30 @@ class GradingResponse(BaseModel):
 
     Args:
         BaseModel : inherit from pydantic BaseModel to validate the output
+    
+    Attributes:
+        grades ([Dict[str, float]]): scores
+            contains a list of dicts of the student's grades and their ids
+
+    example:
+        >>> "students_dict": {
+        >>>  "1235dx":
+        >>>        "answer_1"
+        >>>    "24463dxcf": 
+        >>>         "answer_2"
+        >>> }
+
+        >>> "grades":
+        >>>     {
+        >>>         "7818ert": 1,
+        >>>         "4581rdc": 0.5,
+        >>>     }
+
     """
-    grads : Dict[str,float]
+    grades : Dict[str,float]
 
 @app.get(path="/")
-def read_root(query: str):
+def read_root():
     """
     read index (root)
     for testing purpose
@@ -103,7 +136,7 @@ def predict_grad(answers: StudentsDict)\
             "3": "i am eating a pizza",
             "4": "ahmed is eating a pizza"})
 
-        >>> "grads": {
+        >>> "grades": {
             "156": 0.028096482157707214,
             "3": 0.45442324082056684,
             "4": 0.9999998410542806
@@ -114,7 +147,7 @@ def predict_grad(answers: StudentsDict)\
     return {"grades":res}
 
 
-@app.post("/plagiarism/predict", response_model=NormalDictionary)
+@app.post("/plagiarism/predict", response_model=PlagiarismResponse)
 def read_predict(students_dict: StudentsDict)\
     -> List[
         Dict[str,
@@ -143,6 +176,7 @@ def read_predict(students_dict: StudentsDict)\
     """
     ids, answers = dict_to_list(students_dict.students_dict)
     res = PM.predict(answers, ids)
+    print(res)
     return {"plagiarism_results":res}
 
 if __name__ == '__main__':
