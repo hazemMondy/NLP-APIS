@@ -5,3 +5,6 @@ sentence-transformers
 spacy
 numpy
 sklearn
+httptools
+uvloop
+gunicorn
