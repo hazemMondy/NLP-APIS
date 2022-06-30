@@ -75,11 +75,17 @@ def candidates_tokens(
     """
 
     stop_words = "english"
+    doc = str(doc)
     # Extract candidate words/phrases
-    count = CountVectorizer(
-        ngram_range=n_gram_range,
-        stop_words=stop_words).fit([doc])
-    candidates = count.get_feature_names()
+    print("Extracting candidates...", "len", len(doc),type(doc), doc)
+    candidates = [doc]
+    try:
+        count = CountVectorizer(
+            ngram_range=n_gram_range,
+            stop_words=stop_words).fit([doc])
+        candidates = count.get_feature_names()
+    except Exception as e:
+        print("Error:", e)
     return candidates
 
 def get_n_grams(
@@ -124,7 +130,7 @@ def get_candidates(
     # candidates = key_words.candidates_tokens(paragraph, n_gram_range=n_gram_range[0])
     # * paralel processing to get candidates
     candidates = list(map( lambda gram :
-        candidates_tokens(paragraph, n_gram_range=gram)
+        candidates_tokens(str(paragraph), n_gram_range=gram)
         , n_gram_ranges ))
     return candidates
 
@@ -152,6 +158,15 @@ def match_keywords(
     # ! for testing
     # candidates_emb_shapes = list(map(lambda emb: emb.shape, candidates_emb))
     # keys_emb_shapes = list(map(lambda emb: emb.reshape(1, -1).shape, keywords_emb))
+    # check if candidates_emb shape is 1d
+    def shape_check(emb):
+        if emb.size == 1:
+            return emb.reshape(-1, 1)
+        else:
+            return emb
+    
+    candidates_emb = list(map(shape_check, candidates_emb))
+    keywords_emb = list(map(shape_check, keywords_emb))
 
     combination = list(zip(keywords_emb,candidates_emb))
 
