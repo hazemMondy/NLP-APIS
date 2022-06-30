@@ -17,8 +17,10 @@ def dict_to_list(
         keys are ids
         values are text (answers)
     """
-    return list(dictionary.keys()), list(dictionary.values())
+    keys , vals = list(dictionary.keys()), list(dictionary.values())
+    # convert every element to str
+    return list(map(str, keys)), list(map(str, vals))
 
-import sys
+# import sys
 
-print(sys.path)
+# print(sys.path)
