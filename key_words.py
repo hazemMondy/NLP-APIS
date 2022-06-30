@@ -102,14 +102,15 @@ def get_n_grams(
     """
     # get ngrams for each keyword len
     # range ( len , len +1)
-    n_gram_ranges = list(
+    # ! removed redundents
+    n_gram_ranges = [*set(list(
         map(
             lambda word : (
                 len(word.split()),
                 len(word.split())+1
                 ),
-                keywords))
-
+                keywords)))]
+    print(n_gram_ranges)
     return n_gram_ranges
 
 def get_candidates(
