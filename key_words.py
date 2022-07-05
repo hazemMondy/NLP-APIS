@@ -1,6 +1,7 @@
 """key_words.py"""
 
 from typing import Optional, List, Tuple
+import regex as re
 import numpy as np
 from sklearn.feature_extraction.text import CountVectorizer
 from sentence_transformers.util import cos_sim
@@ -203,3 +204,58 @@ def match_keywords(
     # 5.45 ms ± 52.9 µs per loop (mean ± std. dev. of 7 runs, 100 loops each) for 600 elements
     # return res/float(len(keywords_emb))
     return res/len(keywords_emb)
+
+def get_str_between(doc:str,enclosure:str="\"\"")->List[str]:
+    """
+    get string between two enclosures
+
+    Args:
+        doc (str): document
+        enclosure (str): enclosure
+
+    Returns:
+        List[str]: list of strings
+
+    example:
+        >>> doc = "\"hello\" \"world\""
+        >>> get_str_between(doc)
+        >>> ["hello", "world"]
+    """
+    return re.findall(r'{}(.*?){}'.format(enclosure,enclosure), doc)
+
+
+def match_keywords_in_doc(keywords:List[str],doc:str):
+    """
+    match keywords with candidates in a document
+    
+        Args:
+            keywords (List[str]): list of keywords
+            doc (str): document
+
+        Returns:
+            float: score
+        
+        example:
+            >>> match_keywords_in_doc(["people", "theory"], "people of africa")
+            >>> 0.5
+    """
+    return sum(map(lambda keyword:keyword in doc,keywords))
+
+def hard_keywords_grading(keywords:List[str],docs:List[str]):
+    """
+    hard keywords grading
+
+    Args:
+        keywords (List[str]): list of keywords
+        docs (List[str]): list of docs
+
+    Returns:
+        np array double: scores
+    
+    example:
+        >>> hard_keywords_grading(["people", "theory"], ["people are awesome", "theory", "science"])
+        >>> array([0.5, 0.5, 0.])
+    """
+    if not isinstance(keywords,list):
+        keywords = [keywords]
+    return np.array(list(map(lambda doc :match_keywords_in_doc(keywords, doc),docs))) / len(keywords)
