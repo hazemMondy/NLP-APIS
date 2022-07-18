@@ -80,22 +80,19 @@ def candidates_tokens(
 
     stop_words = "english"
     # Extract candidate words/phrases
-    # ! print("Extracting candidates...", "len", len(doc),type(doc), doc)
     candidates = [doc]
     try:
         count = CountVectorizer(
             ngram_range=n_gram_range,
             stop_words=stop_words).fit([doc])
         candidates = count.get_feature_names()
-    # except Exception as e:
-    except Exception("empty vocabulary") as e:
-        print("Error:", e)
-        pass
+    except Exception as e:
+    # except Exception("empty vocabulary") as e:
+        stop_words
     
-    # ! FASTER
+    # * FASTER
     # unique candidates
-    candidates = [*set(candidates)]
-    return candidates
+    return [*set(candidates)]
 
 def get_n_grams(
     keywords:List[str])\
@@ -111,14 +108,13 @@ def get_n_grams(
     """
     # get ngrams for each keyword len
     # range ( len , len +1)
-    # ! removed redundents
+    # * removed redundents
     n_gram_ranges = [*set(list(
         map(lambda word : (
             len(word.split()),
             len(word.split())+1),
             keywords)))]
-    # ! print(n_gram_ranges)
-    return n_gram_ranges
+    return sorted(n_gram_ranges)
 
 def get_candidates(
     n_gram_ranges: List[
@@ -185,7 +181,7 @@ def match_keywords(
     similarities = list(map(lambda comb:
                     np.array(cos_sim(comb[0],
                     comb[1])).clip(-1, 1).round(6),
-                    combination ))
+                    combination))
 
     def fn_ (x: np.array):
         """
@@ -227,14 +223,14 @@ def get_str_between(doc:str,enclosure:str="\"\"")->List[str]:
 def match_keywords_in_doc(keywords:List[str],doc:str):
     """
     match keywords with candidates in a document
-    
+
         Args:
             keywords (List[str]): list of keywords
             doc (str): document
 
         Returns:
             float: score
-        
+
         example:
             >>> match_keywords_in_doc(["people", "theory"], "people of africa")
             >>> 0.5
@@ -251,7 +247,7 @@ def hard_keywords_grading(keywords:List[str],docs:List[str]):
 
     Returns:
         np array double: scores
-    
+
     example:
         >>> hard_keywords_grading(["people", "theory"], ["people are awesome", "theory", "science"])
         >>> array([0.5, 0.5, 0.])
