@@ -4,3 +4,4 @@ __pycache__/key_words.cpython-39.pyc
 __pycache__/main.cpython-39.pyc
 __pycache__/plagiarism_model.cpython-39.pyc
 __pycache__/transformer_model.cpython-39.pyc
+*.pickle
