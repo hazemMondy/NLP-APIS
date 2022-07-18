@@ -1,20 +1,14 @@
-"""api.api.py"""
+"""grading_model.py"""
 from typing import Optional, List, Dict, Tuple, Set
 import spacy
 import numpy as np
 from sentence_transformers.util import cos_sim
 import key_words
 
-# import os
-# import sys
-# print("hi")
-# print(os.getcwd())
-# print("hi")
-# print(os.path.dirname(os.path.abspath(__file__)))
 
 EXCEPTION_ENTITES = set(["DATE","TIME","PERCENT","MONEY","QUANTITY","ORDINAL", "CARDINAL"])
 # load spacy model
-NLP = spacy.load('en_core_web_sm')
+NER = spacy.load('en_core_web_sm')
 
 # class GradingModel(BERTModel):
 class GradingModel(object):
@@ -24,21 +18,11 @@ class GradingModel(object):
 
     def __new__(
         cls: object,
-        BERTModel: object
-        ):
+        BERTModel: object):
         if not hasattr(cls, 'instance'):
             cls.instance = super(GradingModel, cls).__new__(cls)
             cls.model = BERTModel.model
         return cls.instance
-
-    # def __init__(
-    #     self: object,
-    #     ):
-    #     """
-    #     initialize class
-    #     """
-    #     super().__init__()
-
 
     def __ner(
         self: object,
@@ -56,7 +40,7 @@ class GradingModel(object):
                 value : entity type
         """
 
-        doc = NLP(paragraph)
+        doc = NER(paragraph)
         res = {
             entity.text : entity.label_
             for entity in doc.ents
@@ -120,14 +104,13 @@ class GradingModel(object):
 
         return sims.ravel()
 
-
-    def __ner_grading(
+    def __match_grading(
         self: object,
         entities: List[str],
         doc: str)\
             -> float:
         """
-        grade named entity recognition
+        grade named entity recognition and special words in the answer
         by matching entities in doc
 
         Args:
@@ -140,9 +123,8 @@ class GradingModel(object):
         -------
 
         example:
-            >>> __ner_grading(['Ahmed', 'Ali'], "A
-            >>> Ahmed is eating food.")
-            0.5
+            >>> __match_grading(['Ahmed', 'Ali'], "Ahmed is eating food.")
+            >>> 0.5
 
         """
         # type check
@@ -188,6 +170,15 @@ class GradingModel(object):
             keywords = [keywords]
 
         # list[ emb (N, 768) ]
+        # print(keywords)
+        # print(np.array(
+        #             list(
+        #                 map(
+        #                     self.model.encode
+        #                     , keywords
+        #                     )
+        #                 )
+        #             ).shape)
         return np.array(
                     list(
                         map(
@@ -205,6 +196,7 @@ class GradingModel(object):
         n_gram_range: Optional[Tuple[int,int]] = (1,2), # (1,3)
         threshold: Optional[float] = 0.5,
         exception_entites: Optional[Set[str]]=None,
+        enclosure: Optional[str]= "\"\"",
         )-> List[float]:
         """
         pipeline for grading
@@ -255,6 +247,7 @@ class GradingModel(object):
 
         # if there are named entites in model answer
         if named_entites:
+            
             grades += 1
             # TODO : 2 named entites
             named_entites = list(
@@ -268,10 +261,21 @@ class GradingModel(object):
             # ! withouth stop words removals in both ner and students answer
             ner_grades = np.array(list(
                 map(lambda student_answer:
-                    self.__ner_grading(
+                    self.__match_grading(
                         named_entites,
                         student_answer),
                     docs[1:])))
+
+            if " ".join(named_entites) == docs[0]:
+                return ner_grades.tolist()
+
+
+        # if there are special in model answer
+        hard_keywords = key_words.get_str_between(docs[0], enclosure)
+        hard_keywords_grades = np.zeros(len(docs[1:]))
+        if len(hard_keywords) != 0:
+            hard_keywords_grades = key_words.hard_keywords_grading(hard_keywords, docs[1:])
+
 
         # TODO : 2 keywords
         model_candidates = key_words.candidates_tokens(docs[0],n_gram_range=n_gram_range)
@@ -302,14 +306,28 @@ class GradingModel(object):
                     students_candidates_emb,
                     )))
         res = keywords_grades + ner_grades + sim_grades
-        
+        # res = keywords_grades , ner_grades , sim_grades
+
         # TODO : 4 guassian regression for wighted sum of the result
         # avg sum
         res /= grades
 
         # TODO : 5 return the result
         return res.tolist()
+        # return res
 
+    # def fit(self, X, y=None):
+    #     """
+    #     fit the model
+
+    #     Args:
+    #         X (List[str]): list of documents
+    #         y (None): not used
+
+    #     Returns:
+    #         object: self
+    #     """
+    #     return self
     def predict(
         self: object,
         answers: List[str],
