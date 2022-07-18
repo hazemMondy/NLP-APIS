@@ -4,12 +4,19 @@ import spacy
 import numpy as np
 from sentence_transformers.util import cos_sim
 import key_words
+import pickle
+
+SOFT_THRESHOLD = 0.75
+MEDUIM_THRESHOLD = 0.88
+ENCLOSURE_SOFT = "\"\"@"
+ENCLOSURE_MEDIUM = "\"\"@@"
 
 
 EXCEPTION_ENTITES = set(["DATE","TIME","PERCENT","MONEY","QUANTITY","ORDINAL", "CARDINAL"])
 # load spacy model
 NER = spacy.load('en_core_web_sm')
 
+rg_model = pickle.load(open('model_rg.pkl.pickle', 'rb'))
 # class GradingModel(BERTModel):
 class GradingModel(object):
     """GradingModel"""
@@ -223,7 +230,19 @@ class GradingModel(object):
             >>> )
             >>> [1]
         """
-
+        def get_candidates(n_grams, doc):
+            x = list(map(lambda gram :
+                key_words.candidates_tokens(str(doc), n_gram_range=gram)
+                , n_grams))
+            return x
+        def flatten(ls_ls):
+            out = []
+            for ls in ls_ls:
+                if isinstance(ls, list):
+                    out.extend(ls)
+                else:
+                    out.append(ls)
+            return out
         if exception_entites is None:
             exception_entites = EXCEPTION_ENTITES
 
@@ -276,7 +295,35 @@ class GradingModel(object):
         if len(hard_keywords) != 0:
             hard_keywords_grades = key_words.hard_keywords_grading(hard_keywords, docs[1:])
 
+        manual_keywords_soft = key_words.get_str_between(docs[0], ENCLOSURE_SOFT)
+        manual_keywords_soft_grades = np.zeros(len(docs[1:]))
+        if len(manual_keywords_soft) != 0:
+            words = set(manual_keywords_soft)
+            ngrams = [*set(list(map(lambda x : len(x.split(' ')),  list(words))))]
+            ngram = max(ngrams), min(ngrams)
+            docs_candidates = list(map(lambda doc : get_candidates([ngram], doc), docs[1:]))
+            # flatten
+            docs_candidates = list(map(flatten , docs_candidates))
+            docs_candidates_emb = list(map(self.model.encode, docs_candidates))
+            manual_keywords_soft_grades = np.array(list(map(lambda docs_cand :cos_sim
+                (self.model.encode(manual_keywords_soft), docs_cand).
+                __array__().max(axis=1) > SOFT_THRESHOLD,
+                 docs_candidates_emb))).astype(float)
 
+        manual_keywords_medium = key_words.get_str_between(docs[0], ENCLOSURE_MEDIUM)
+        manual_keywords_medium_grades = np.zeros(len(docs[1:]))
+        if len(manual_keywords_medium) != 0:
+            words = set(manual_keywords_medium)
+            ngrams = [*set(list(map(lambda x : len(x.split(' ')),  list(words))))]
+            ngram = max(ngrams), min(ngrams)
+            docs_candidates = list(map(lambda doc : get_candidates([ngram], doc), docs[1:]))
+            # flatten
+            docs_candidates = list(map(flatten , docs_candidates))
+            docs_candidates_emb = list(map(self.model.encode, docs_candidates))
+            manual_keywords_medium_grades = np.array(list(map(lambda docs_cand :cos_sim
+                (self.model.encode(manual_keywords_medium), docs_cand).
+                __array__().max(axis=1) > MEDUIM_THRESHOLD,
+                 docs_candidates_emb))).astype(float)
         # TODO : 2 keywords
         model_candidates = key_words.candidates_tokens(docs[0],n_gram_range=n_gram_range)
         model_candidate_emb = self.model.encode(model_candidates)
@@ -305,12 +352,14 @@ class GradingModel(object):
                     thershold=threshold),
                     students_candidates_emb,
                     )))
-        res = keywords_grades + ner_grades + sim_grades
-        # res = keywords_grades , ner_grades , sim_grades
+        # res = keywords_grades + ner_grades + sim_grades
+        # # res = keywords_grades , ner_grades , sim_grades
 
-        # TODO : 4 guassian regression for wighted sum of the result
-        # avg sum
-        res /= grades
+        # # TODO : 4 guassian regression for wighted sum of the result
+        # # avg sum
+        # res /= grades
+        res = rg_model.predict(keywords_grades , ner_grades , sim_grades,
+             manual_keywords_soft_grades , manual_keywords_medium_grades , hard_keywords_grades)
 
         # TODO : 5 return the result
         return res.tolist()
