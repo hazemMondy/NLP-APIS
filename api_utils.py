@@ -19,8 +19,4 @@ def dict_to_list(
     """
     keys , vals = list(dictionary.keys()), list(dictionary.values())
     # convert every element to str
-    return list(map(str, keys)), list(map(str, vals))
-
-# import sys
-
-# print(sys.path)
+    return list(map(lambda x: str(x).lower(), keys)), list(map(lambda x: str(x).lower(), vals))
