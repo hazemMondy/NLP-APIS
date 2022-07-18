@@ -154,7 +154,7 @@ def match_keywords(
 
     Returns:
         float: score
-    
+
     example:
         >>> match_keywords(keywords_emb, candidates_emb, thershold=0.5)
         >>> 0.8
@@ -201,6 +201,9 @@ def match_keywords(
     # return res/float(len(keywords_emb))
     return res/len(keywords_emb)
 
+def reverse_string(string:str)->str:
+    return string[::-1]
+
 def get_str_between(doc:str,enclosure:str="\"\"")->List[str]:
     """
     get string between two enclosures
@@ -217,7 +220,8 @@ def get_str_between(doc:str,enclosure:str="\"\"")->List[str]:
         >>> get_str_between(doc)
         >>> ["hello", "world"]
     """
-    return re.findall(r'{}(.*?){}'.format(enclosure,enclosure), doc)
+    # reverse a string
+    return re.findall(r'{}(.*?){}'.format(enclosure,reverse_string(enclosure)), doc)
 
 
 def match_keywords_in_doc(keywords:List[str],doc:str):
