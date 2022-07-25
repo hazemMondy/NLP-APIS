@@ -1,11 +1,11 @@
-"""siamese_ner_grading_model.py"""
+"""siamese_ner_grading.py"""
 
 from typing import Optional, List, Dict, Set
 import numpy as np
 import spacy
 from sentence_transformers.util import cos_sim
-import key_words
 from utils import load_obj, save_obj
+from strings_utils import clean_doc_keep_float
 from configs import configs as cfg
 
 EXCEPTION_ENTITES = cfg['exception_entities']
@@ -86,7 +86,6 @@ class SIAMESENERGradingModel(object):
         corpus_ls = []
         # do in batches
         n_corpus = len(corpus)
-        batch = 5
         for i in range(0,n_corpus,batch):
             print("Processing batch {}/{}".format(i//batch+1, (n_corpus//batch)+1))
             corpus_emb = self.model.encode(corpus[i:i+batch])
@@ -111,7 +110,7 @@ class SIAMESENERGradingModel(object):
 
         Returns:
             np.ndarray: similarity scores of shape (N,)
- 
+
         example:
             >>> __siamese_model(model_answer_emb, students_emb)
             [0.5, 0.5]
@@ -183,17 +182,17 @@ class SIAMESENERGradingModel(object):
         if exception_entites is None:
             exception_entites = EXCEPTION_ENTITES
 
-        # TODO : 1 siamese similarty
+        #* 1)siamese similarty
         embs = self.__embed_corpus(docs)
         model_answer_emb = embs[0]
         # embs[1:] is the rest of the embeddings for students
         sim_grades = self.__siamese_model(model_answer_emb.reshape(1,-1), embs[1:])
 
-        # TODO : 2 named entites
+        #* 2) named entites
         # grades = 2
         # for self.model answer only
         # clean model answer before NER
-        docs[0] = key_words.clean_doc_keep_float(docs[0])
+        docs[0] = clean_doc_keep_float(docs[0])
         named_entites = self.__ner(docs[0])
 
         ner_grades = np.zeros(len(docs[1:]))
@@ -218,7 +217,7 @@ class SIAMESENERGradingModel(object):
             if " ".join(named_entites) == docs[0]:
                 return ner_grades.tolist()
 
-        # # TODO : 3 machine learning model for wighted sum of the result
+        #* 3) machine learning model for wighted sum of the result
         res = self.last_layer.predict(ner_grades , sim_grades)
         return res.tolist()
 
@@ -239,7 +238,7 @@ class SIAMESENERGradingModel(object):
         """
         self.last_layer.fit(x_train, y_train, *args, **kwargs)
         print("Model finetuned", "you may save the model now")
-    
+
     def save(self:object,
         path:str = None):
         """
@@ -258,7 +257,21 @@ class SIAMESENERGradingModel(object):
         answers: List[str],
         ids: List[str],
         exception_entites: Optional[Set[str]]=None)-> List[float]:
-        
+        """
+        predict grades for the given answers
+
+        Args:
+            answers (List[str]): list of answers
+            ids (List[str]): list of ids
+            exception_entites (Optional[Set[str]]): list of entities to grade for
+
+        Returns:
+            List[float]: list of grades
+
+        example:
+            >>> model.predict(answers, ids, exception_entites=None)
+            [0.5, 0.5]
+        """
         scores= self.pipeline(
                 docs=answers,
                 exception_entites=exception_entites)

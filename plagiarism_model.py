@@ -1,66 +1,69 @@
 """plagiarism_model.py"""
 from typing import Optional, List, Dict#, Tuple, Union
 import numpy as np
-# from sentence_transformers import SentenceTransformer
-# from sklearn.metrics.pairwise import cosine_similarity
 from sentence_transformers.util import cos_sim
-# from transformer_model import BERTModel
+from configs import configs as cfg
 
-#/home/ec2-user/.local/lib/python3.7/site-packages/
-
-# MODELPATH : str = r"models\sentence-transformers_xlm-r-distilroberta-base-paraphrase-v1"
-REGRESSION_FUNCTION = np.array([0.5,0.5])
-
+DEBUGGING = cfg['debugging']
 
 class PlagiarismModel(object):
     """PlagiarismModel"""
 
-    def __new__(
-        cls:object,
-        BERTModel: object)\
-            -> object:
+    def __new__(cls:object,
+        encoder_model: object) -> object:
         if not hasattr(cls, 'instance'):
             cls.instance = super(PlagiarismModel, cls).__new__(cls)
-            cls.model = BERTModel.model
+            try:
+                cls.model = encoder_model.model
+            except AttributeError as err:
+                if DEBUGGING:
+                    print(err)
+                cls.model = encoder_model
         return cls.instance
 
-    # def __init__(cls, model_path=MODELPATH,
-    #     # tfidf=None, regression_function=None
-    #      ):
-    #     cls.model = SentenceTransformer(model_path)
-    #     # cls.regression_function = REGRESSION_FUNCTION
-    #     # cls.tfidf = tfidf
-
-    # @PlagiarismModel
-    def __embed_corpus(
-       self: object,
-        corpus: List[str])\
-            -> List[np.ndarray]:
+    def __embed_corpus(self: object,
+        corpus: List[str], batch:int = 50)-> List[np.ndarray]:
         """
-        embed corpus with sentence_transformers
+        embed list of strings sentences into list of embeddings
+            using sentence_transformers model
 
         Args:
-            corpus (list[str]): list of sentencetes strings
+            corpus (List[str]): list of sentences
 
         Returns:
-            List[np.ndarray]: embeddings of shape [(N,768)]
+            List[numpy.ndarray]: embeddings of shape [(N,768)] or 384 depending on the model
 
+        example:
+            >>> __siamese_model(["how much vinegar" ,"used in each container"])
+            array([[ 9.69761238e-02,  1.09762438e-01, -1.33646965e-01,
+                -5.82718849e-02,  1.10034369e-01, -1.03692561e-02,
+                2.60011166e-01,  2.99603552e-01,  7.14241946e-03,
+                ...]
+                [5.96261024e-01, -6.62316903e-02, -3.36377978e-01,
+                1.44604310e-01,  5.11792123e-01,  2.44314805e-01,
+                ...]], dtype=float32)
         """
         # type check
-        if not isinstance(corpus, list):
+        if not isinstance(corpus, list) :
             corpus = [corpus]
 
         # if passed integers
-        corpus = list(map(str, corpus))
+        corpus = list(map(str , corpus))
+        corpus_ls = []
+        # do in batches
+        n_corpus = len(corpus)
+        for i in range(0,n_corpus,batch):
+            print("Processing batch {}/{}".format(i//batch+1, (n_corpus//batch)+1))
+            corpus_emb = self.model.encode(corpus[i:i+batch])
+            corpus_ls.extend(corpus_emb)
+        if n_corpus % batch != 0 and n_corpus > batch:
+            corpus_emb = self.model.encode(corpus[i+batch:])
+            corpus_ls.extend(corpus_emb)
 
-        emb = self.model.encode(corpus)
+        return np.array(corpus_ls)
 
-        return emb
-
-    def __siamese_model(
-       self: object,
-        students_emb: List[np.ndarray])\
-            -> np.ndarray:
+    def __siamese_model(self: object,
+        students_emb: List[np.ndarray]) -> np.ndarray:
         """
         calculate similarity between students embeddings
 
@@ -73,48 +76,34 @@ class PlagiarismModel(object):
 
         """
         # simalrity score
-        sims =np.array(
-            list(
-                map(
+        sims =np.array(list(map(
                     lambda s_emb: np.array(
-                        cos_sim(
-                        s_emb.reshape(1,-1),
-                        students_emb))
+                        cos_sim( s_emb.reshape(1,-1),students_emb))
                     , students_emb)))
 
         # delete self similarity
         # * can't replace
         # so we delet then insert
         # iterate over each student enumertion
-        sims = np.array(
-            list(
-                map(
+        sims = np.array(list(map(
                     lambda sim:
                     np.delete(
                         sim[1],
                         obj=sim[0],
                         axis=1),
-                    enumerate(
-                        sims.tolist()
-                    )
-                )
-            ))
+                    enumerate(sims.tolist())
+                )))
         # insert - inf to self similarity
         # easier further on
-        sims = np.array(
-            list(
-                map(
+        sims = np.array(list(map(
                     lambda sim :
                     np.insert(
                         sim[1],
                         sim[0],
                         -np.inf,
                         axis=1),
-                    enumerate(
-                        sims.tolist()
-                    )
-                )
-            ))
+                    enumerate(sims.tolist())
+                )))
 
         return sims
 
@@ -128,8 +117,6 @@ class PlagiarismModel(object):
         pipeline for pligarism model
             * embedding
             * siamese model
-            * TF-IDF
-            * regression model
 
         Args:
             students_answers (list[str]): students answers
@@ -150,23 +137,12 @@ class PlagiarismModel(object):
         students_emb = self.__embed_corpus(students_answers)
         sims = self.__siamese_model(students_emb)
         # temperorary instead of regression
-        res = list(
-                    map(
-                        lambda sim:
-                            dict(
-                                zip(
-                                    list(
-                                        map( lambda x: ids[x], # ! for correct indexing with st ids
-                                            np.where(sim >= threshold)[1].tolist()
-                                            )
-                                        ), # student ids
-                                    sim[sim >= threshold] # similarity scores
-                                    )
-                                )
-                        , sims
-                        )
-                    )
-
+        res = list(map(lambda sim:
+                    dict(zip(list(
+                                map( lambda x: ids[x], # ! for correct indexing with st ids
+                                    np.where(sim >= threshold)[1].tolist())), # student ids
+                            sim[sim >= threshold] # similarity scores
+                            )), sims))
         return res
 
     def dummy_predict(
@@ -205,18 +181,10 @@ class PlagiarismModel(object):
         scores = self.__pligarism_pipeline(students_answers,ids, threshold)
         # # return each id with coressponding scores
 
-        res = list(
-                map(
-                    lambda r:
-                        {r[0]: r[1]}
-                    ,
-                    filter(
-                        lambda r:
-                            any(r[1])
-                        ,
+        res = list(map(lambda r:
+                        {r[0]: r[1]},
+                    filter(lambda r:
+                            any(r[1]),
                         zip(ids, scores)
-                        )
-                    )
-                )
-
+                        )))
         return res

@@ -3,8 +3,9 @@ from typing import List, Tuple, Dict, Set, Optional
 import numpy as np
 from sentence_transformers.util import cos_sim
 from sklearn.feature_extraction.text import CountVectorizer
-from utils import flatten,KeywordType
 import key_words
+from utils import flatten, KeywordType
+from strings_utils import get_str_between, clean_doc
 from configs import configs as cfg
 
 DEBUGGING = cfg['debugging']
@@ -297,7 +298,7 @@ class ManualKeywordsGradingModel(object):
             >>> kgm.pipeline(answers, enclosure, grading_type)
             ('know used', array([1.0 , 1.0 , 0.0]), [DEFAULT_WEIGHT])
         """
-        keywords = key_words.get_str_between(answers[0], enclosure)
+        keywords = get_str_between(answers[0], enclosure)
         if DEBUGGING:
             print(keywords)
         grades = np.zeros(len(answers[1:]))
@@ -312,7 +313,7 @@ class ManualKeywordsGradingModel(object):
             grades = self.keywords_grading(answers_candidates_emb = students_keywords,
                 manual_keywords = keywords, answers = answers[1:], grading_type = grading_type)
             # clean model answer
-            answers[0] = key_words.clean_doc(answers[0], keywords, keywords_weights, enclosure)
+            answers[0] = clean_doc(answers[0], keywords, keywords_weights, enclosure)
         return answers[0], grades, keywords_weights
 
     def predict(

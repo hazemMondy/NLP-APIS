@@ -12,7 +12,7 @@ DEFAULT_WEIGHT = np.nan
 EXCEPTION_ENTITES = set(["DATE","TIME","PERCENT","MONEY","QUANTITY","ORDINAL", "CARDINAL"])
 NER_PATH = 'en_core_web_sm'
 SIAMESE_NER_MODEL_PATH = 'models/model_rg.pkl.pickle'
-KWRDS_MODEL_PATH = 'models/kwrds_model'
+KWRDS_MODEL_PATH = 'models/kwrds_model.pickle'
 
 configs = {
     'debugging': DEBUGGING,

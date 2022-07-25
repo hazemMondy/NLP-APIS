@@ -3,7 +3,6 @@
 from typing import List, Any
 import pickle
 import enum
-
 class KeywordType(enum.Enum):
     """
     KeywordType

@@ -1,11 +1,11 @@
 """key_words.py"""
 
 from typing import Optional, List, Tuple
-import regex as re
 import numpy as np
 from sklearn.feature_extraction.text import CountVectorizer
 from sentence_transformers.util import cos_sim
 from configs import configs as cfg
+from strings_utils import reverse_string, match_keywords_in_doc
 
 DEFAULT_WEIGHT = cfg['default_weight']
 
@@ -162,9 +162,6 @@ def match_keywords(
     # * paralel processing to get candidates
     # * retrive embs for testing
 
-    # ! for testing
-    # candidates_emb_shapes = list(map(lambda emb: emb.shape, candidates_emb))
-    # keys_emb_shapes = list(map(lambda emb: emb.reshape(1, -1).shape, keywords_emb))
     # check if candidates_emb shape is 1d
     def shape_check(emb):
         if emb.size == 1:
@@ -199,46 +196,6 @@ def match_keywords(
     # 5.45 ms ± 52.9 µs per loop (mean ± std. dev. of 7 runs, 100 loops each) for 600 elements
     # return res/float(len(keywords_emb))
     return res/len(keywords_emb)
-
-def reverse_string(doc:str)->str:
-    return doc[::-1]
-
-def get_str_between(doc:str,enclosure:str="\"\"")->List[str]:
-    """
-    get string between two enclosures
-
-    Args:
-        doc (str): document
-        enclosure (str): enclosure
-
-    Returns:
-        List[str]: list of strings
-
-    example:
-        >>> doc = "\"hello\" \"world\""
-        >>> get_str_between(doc)
-        >>> ["hello", "world"]
-    """
-    # reverse a string
-    return re.findall(r'{}(.*?){}'.format(enclosure,reverse_string(enclosure)), doc)
-
-def match_keywords_in_doc(keywords:List[str],doc:str):
-    """
-    match keywords with candidates in a document
-
-        Args:
-            keywords (List[str]): list of keywords
-            doc (str): document
-
-        Returns:
-            float: score
-
-        example:
-            >>> match_keywords_in_doc(["people", "theory"], "people of africa")
-            >>> 0.5
-    """
-    return np.array(list(map(lambda keyword:keyword in doc,keywords)))
-    # return sum(map(lambda keyword:keyword in doc,keywords))
 
 def hard_keywords_grading(keywords:List[str],docs:List[str]):
     """
@@ -294,90 +251,3 @@ def get_weights_from_doc(doc:str, keywords:List[str], enclosure:str)->List[float
             weight = np.nan
         weights.append(weight)
     return weights
-
-def clean_doc(doc:str, keywords:List[str], weights:List[float], enclosure:str):
-    """
-    clean document
-
-    Args:
-        doc (str): document
-
-    Returns:
-        str: cleaned document
-
-    example:
-        >>> clean_doc("hello world")
-        >>> "hello world"
-    """
-    if not isinstance(keywords,list):
-        keywords = [keywords]
-    for i,keyword in enumerate(keywords):
-        # get the end index of the keyword in the doc
-        # and the next word after the keyword
-        key = enclosure + keyword + reverse_string(enclosure)
-        if weights[i] == np.nan:
-            doc = doc.replace(key,"")
-        else:
-            doc = doc.replace(key + str(weights[i]), "")
-    return doc
-
-def clean_punctuation(doc:str)->str:
-    """
-    clean document from punctuation
-
-    Args:
-        doc (str): document
-
-    Returns:
-        str: cleaned document
-
-    example:
-        >>> clean_doc_from_punctuation('You need \"\"vinegar0.6 @container. at 8º ')
-        >>> 'You need vinegar06 container at 8º'
-    """
-
-    if doc is None:
-        return None
-    doc = re.sub(r'[^\w\s]','',doc)
-    return doc
-
-def parse_float(doc:str)->List[float] or []:
-    """
-    parse float from document
-
-    Args:
-        doc (str): document
-
-    Returns:
-        List[float]: list of floats
-
-    example:
-        >>> parse_float('You need \"\"vinegar0.6 @container. at 8º ')
-        >>> [0.6]
-    """
-    if doc is None:
-        return []
-        # return None
-    return re.findall(r'\d+\.\d+', doc)
-
-def clean_doc_keep_float(doc:str)->str:
-    """
-    clean document from punctuation and keep float numbers
-
-    Args:
-        doc (str): document
-
-    Returns:
-        str: cleaned document
-
-    example:
-        >>> clean_doc_from_punctuation('You need \"\"vinegar0.6 @container. at 8º ')
-        >>> 'You need vinegar0.6 container at 8º'
-    """
-    doc_punc = clean_punctuation(doc)
-    floats = parse_float(doc)
-    floats_punc = [clean_punctuation(number) for number in floats]
-    floats_dict = dict(zip(floats, floats_punc))
-    for float_n, float_punc in floats_dict.items():
-        doc_punc = doc_punc.replace(float_punc, float_n)
-    return doc_punc
