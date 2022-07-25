@@ -5,7 +5,9 @@ import regex as re
 import numpy as np
 from sklearn.feature_extraction.text import CountVectorizer
 from sentence_transformers.util import cos_sim
-# from sklearn.metrics.pairwise import cosine_similarity
+from configs import configs as cfg
+
+DEFAULT_WEIGHT = cfg['default_weight']
 
 def maximal_marginal_relevance(doc_embedding: np.ndarray,
         word_embeddings: np.ndarray,
@@ -86,12 +88,10 @@ def candidates_tokens(
             ngram_range=n_gram_range,
             stop_words=stop_words).fit([doc])
         candidates = count.get_feature_names()
-    except Exception as e:
-    # except Exception("empty vocabulary") as e:
-        stop_words
-    
-    # * FASTER
-    # unique candidates
+    except ValueError as err:
+        if "empty vocabulary" in str(err):
+            print("Empty vocabulary")
+        return [*set(doc.split())]
     return [*set(candidates)]
 
 def get_n_grams(
@@ -138,7 +138,6 @@ def get_candidates(
         , n_gram_ranges))
     return candidates
 
-
 def match_keywords(
     keywords_emb:List[np.ndarray],
     candidates_emb : List[np.ndarray],
@@ -172,7 +171,7 @@ def match_keywords(
             return emb.reshape(-1, 1)
         else:
             return emb
-    
+
     candidates_emb = list(map(shape_check, candidates_emb))
     keywords_emb = list(map(shape_check, keywords_emb))
 
@@ -201,8 +200,8 @@ def match_keywords(
     # return res/float(len(keywords_emb))
     return res/len(keywords_emb)
 
-def reverse_string(string:str)->str:
-    return string[::-1]
+def reverse_string(doc:str)->str:
+    return doc[::-1]
 
 def get_str_between(doc:str,enclosure:str="\"\"")->List[str]:
     """
@@ -223,7 +222,6 @@ def get_str_between(doc:str,enclosure:str="\"\"")->List[str]:
     # reverse a string
     return re.findall(r'{}(.*?){}'.format(enclosure,reverse_string(enclosure)), doc)
 
-
 def match_keywords_in_doc(keywords:List[str],doc:str):
     """
     match keywords with candidates in a document
@@ -239,7 +237,8 @@ def match_keywords_in_doc(keywords:List[str],doc:str):
             >>> match_keywords_in_doc(["people", "theory"], "people of africa")
             >>> 0.5
     """
-    return sum(map(lambda keyword:keyword in doc,keywords))
+    return np.array(list(map(lambda keyword:keyword in doc,keywords)))
+    # return sum(map(lambda keyword:keyword in doc,keywords))
 
 def hard_keywords_grading(keywords:List[str],docs:List[str]):
     """
@@ -258,4 +257,127 @@ def hard_keywords_grading(keywords:List[str],docs:List[str]):
     """
     if not isinstance(keywords,list):
         keywords = [keywords]
-    return np.array(list(map(lambda doc :match_keywords_in_doc(keywords, doc),docs))) / len(keywords)
+    return np.array(list(map(lambda doc:
+        match_keywords_in_doc(keywords, doc),docs))) / len(keywords)
+
+def get_weights_from_doc(doc:str, keywords:List[str], enclosure:str)->List[float]:
+    """
+    get weights from doc
+
+    Args:
+        doc (str): document
+        keywords (List[str]): list of keywords
+        enclosure (str): enclosure
+
+    Returns:
+        List[float]: list of weights
+
+    example:
+        >>> doc = "hi my name is \"\"john\"\"4 and I am a student", ["john"]
+        >>> enclosure = "\"\""
+        >>> get_weights_from_doc(doc, ["jhon"], enclosure)
+        >>> [1.0]
+    """
+    if not isinstance(keywords,list):
+        keywords = [keywords]
+    weights = []
+    for keyword in keywords:
+        # get the end index of the keyword in the doc
+        # and the next word after the keyword
+        key = enclosure + keyword + reverse_string(enclosure)
+        end_index = doc.find(key) + len(key)
+        weight = doc[end_index:].split()[0]
+        try:
+            float(weight)
+            weight = float(weight)
+        except ValueError:
+            weight = np.nan
+        weights.append(weight)
+    return weights
+
+def clean_doc(doc:str, keywords:List[str], weights:List[float], enclosure:str):
+    """
+    clean document
+
+    Args:
+        doc (str): document
+
+    Returns:
+        str: cleaned document
+
+    example:
+        >>> clean_doc("hello world")
+        >>> "hello world"
+    """
+    if not isinstance(keywords,list):
+        keywords = [keywords]
+    for i,keyword in enumerate(keywords):
+        # get the end index of the keyword in the doc
+        # and the next word after the keyword
+        key = enclosure + keyword + reverse_string(enclosure)
+        if weights[i] == np.nan:
+            doc = doc.replace(key,"")
+        else:
+            doc = doc.replace(key + str(weights[i]), "")
+    return doc
+
+def clean_punctuation(doc:str)->str:
+    """
+    clean document from punctuation
+
+    Args:
+        doc (str): document
+
+    Returns:
+        str: cleaned document
+
+    example:
+        >>> clean_doc_from_punctuation('You need \"\"vinegar0.6 @container. at 8º ')
+        >>> 'You need vinegar06 container at 8º'
+    """
+
+    if doc is None:
+        return None
+    doc = re.sub(r'[^\w\s]','',doc)
+    return doc
+
+def parse_float(doc:str)->List[float] or []:
+    """
+    parse float from document
+
+    Args:
+        doc (str): document
+
+    Returns:
+        List[float]: list of floats
+
+    example:
+        >>> parse_float('You need \"\"vinegar0.6 @container. at 8º ')
+        >>> [0.6]
+    """
+    if doc is None:
+        return []
+        # return None
+    return re.findall(r'\d+\.\d+', doc)
+
+def clean_doc_keep_float(doc:str)->str:
+    """
+    clean document from punctuation and keep float numbers
+
+    Args:
+        doc (str): document
+
+    Returns:
+        str: cleaned document
+
+    example:
+        >>> clean_doc_from_punctuation('You need \"\"vinegar0.6 @container. at 8º ')
+        >>> 'You need vinegar0.6 container at 8º'
+    """
+    doc_punc = clean_punctuation(doc)
+    floats = parse_float(doc)
+    floats_punc = [clean_punctuation(number) for number in floats]
+    floats_dict = dict(zip(floats, floats_punc))
+    for float_n, float_punc in floats_dict.items():
+        doc_punc = doc_punc.replace(float_punc, float_n)
+    return doc_punc
