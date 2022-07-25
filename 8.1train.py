@@ -1,15 +1,9 @@
-import time
-import os
-import itertools
+import pickle
+from IPython.display import clear_output
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
-import plotly.express as px
 from sentence_transformers.util import cos_sim
-import sys
 import key_words
-from IPython.display import clear_output
-import pickle
 
 def save_obj(obj:object,name:str):
     ext = '.pickle'
@@ -115,39 +109,52 @@ def match_keywords(
                     candidates_emb))
     return similarities
 
-def keywords_pipeline(docs,batch = 20):
+def emb_keywords_(keywords):
+    return np.array(list(map(lambda x: model.encode(str(x)),keywords)))
+
+def keywords_exrtaction(docs,n_grams = [(2,3)],top_n=10,diversity=0.7,batch = 5):
+    """
+    keywords exrtaction pipeline
+
+    Args:
+        docs (List[str]): list of documents
+        n_grams (Optional[List[Tuple[int, int]]]): list of n_grams
+        top_n (Optional[int]): number of top words to extract
+        diversity (Optional[float]): diversity of top words to extract
+        batch (Optional[int]): batch size
+
+    Returns:
+        List[List[str]]: list of top_n keyprhases
+    """
+    if isinstance(docs, str):
+        docs = [docs]
     n_docs = len(docs)
     if n_docs < batch:
         batch = n_docs
-    times = []
-    docs_keys_ls = []
-    n_gram = [(2,3)]
     # all model answers
-    t1 = time.perf_counter()
-    docs_keys_ls_s = []
+    docs_keys_ls = []
     # do in batches
     for i in range(0,n_docs,batch):
         print("Processing batch {}/{}".format(i//batch+1, (n_docs//batch)+1))
-        students_candidates = list(map(lambda doc: get_candidates(n_gram, doc), docs[i:i+batch]))
-        students_candidates_emb =  list(map( lambda st: list(map( emb_keywords ,st)), students_candidates))
-        docs_emb = emb_keywords(docs[i:i+batch])
-        docs_keywords = list(map(lambda x: maximal_marginal_relevance(
-                x[0].reshape(1, -1),x[1],x[2],top_n=10 ,diversity=0.7),
-                zip(docs_emb,students_candidates_emb,students_candidates)))
-        docs_keys_ls_s.extend(docs_keywords)
+        docs_candidates = list(map(lambda doc: get_candidates(n_grams, doc), docs[i:i+batch]))
+        # print("Extracting embeddings")
+        docs_candidates_emb =  np.array(list(map(emb_keywords_,docs_candidates)))
+        # print("Matching keywords")
+        docs_emb = model.encode(docs[i:i+batch])
+        # print("Extracting keywords")
+        docs_keywords = list(map(lambda doc: maximal_marginal_relevance(
+                doc[0].reshape(1, -1),doc[1],doc[2],top_n=top_n ,diversity=diversity),
+                zip(docs_emb,docs_candidates_emb,docs_candidates)))
+        docs_keys_ls.extend(docs_keywords)
 
     if n_docs % batch != 0 and n_docs > batch:
-        students_candidates = list(map(lambda doc: get_candidates([n_gram], doc), docs[i+batch:]))
-        students_candidates_emb =  list(map( lambda st: list(map( emb_keywords ,st)), students_candidates))
-        docs_emb = emb_keywords(docs[i+batch:])
-        docs_keywords = list(map(lambda x: maximal_marginal_relevance(
-                x[0].reshape(1, -1),x[1],x[2],top_n=10 ,diversity=0.7),
-                zip(docs_emb,students_candidates_emb,students_candidates)))
-        docs_keys_ls_s.extend(docs_keywords)
-
-    docs_keys_ls.append(docs_keys_ls_s)
-    times.append(time.perf_counter() - t1)
-    print("time",times)
+        docs_candidates = list(map(lambda doc: get_candidates(n_grams, doc), docs[i+batch:]))
+        docs_candidates_emb =  np.array(list(map(emb_keywords_, docs_candidates)))
+        docs_emb = model.encode(docs[i+batch:])
+        docs_keywords = list(map(lambda doc: maximal_marginal_relevance(
+                doc[0].reshape(1, -1),doc[1],doc[2],top_n=top_n ,diversity=diversity),
+                zip(docs_emb,docs_candidates_emb,docs_candidates)))
+        docs_keys_ls.extend(docs_keywords)
     return docs_keys_ls
 
 def grading(keywords_embeddings_list,students_candidates_emb_list,thershold=0.5):
@@ -180,8 +187,8 @@ def get_word_emb(word):
         words_emb_dict[word] = model.encode(word)
         return words_emb_dict[word]
 
-def get_words_emb(words):
-    return list(map(get_words_emb, words))
+# def get_words_emb(words):
+#     return list(map(get_words_emb, words))
 
 model_answers_dict = {
     1: load_obj(f'data/essaySet_{1}_model_answers'),
@@ -197,43 +204,24 @@ model_answers_dict = {
 }
 
 
-times = {}
-for essay in range(3,11):
-    t = []
-    print(f"EssaySet: {essay} ...")
-    t1 = time.perf_counter()
+for essay in range(0,11):
     model_answers = model_answers_dict[essay]
-    docs = df.query(f'EssaySet == {essay}')["EssayText"].values.tolist()[:10]
-    t.append(time.perf_counter() - t1)
+    docs = df.query(f'EssaySet == {essay}')["EssayText"].values.tolist()
 
-    docs_keywords = keywords_pipeline(docs, batch=5)
+    docs_keywords = keywords_exrtaction(docs, batch=5)
+    model_answer_kwrds = keywords_exrtaction(model_answers, batch=5)
 
-    print("docs keywords emb ...")
-    t1 = time.perf_counter()
-    # docs_keywords_emb = list(map(lambda x: get_words_emb(x),docs_keywords))
-    docs_keywords_emb = list(map(model.encode,docs_keywords))
-    t.append(time.perf_counter() - t1)
+    docs_keywords_emb = list(map(lambda kwrds: np.array(list(map(get_word_emb ,kwrds))),docs_keywords))
+    keywords_emb = list(map(lambda kwrds: np.array(list(map(get_word_emb ,kwrds))),model_answer_kwrds))
 
-    print("model keywords ...")
-    t1 = time.perf_counter()
-    model_candidates = list(map(lambda ans: candidates_tokens(ans,n_gram_range=(2,3)),model_answers))
-    # model_candidates = list(map(lambda ans: key_words.candidates_tokens(ans,n_gram_range=(2,3)),model_answers))
-    model_candidate_emb = list(map(lambda cand: get_words_emb(cand),model_candidates))
-    keywords = list(map(lambda x: maximal_marginal_relevance(
-        x[0].reshape(1, -1),x[1],x[2],top_n=10,diversity=0.8),
-        zip(model.encode(model_answers),
-        model_candidate_emb,model_candidates)))
-    t.append(time.perf_counter() - t1)
+    grades = np.array(list(map(lambda model_emb: 
+        np.array(list(map(lambda doc_emb:
+        cos_sim(model_emb,doc_emb).__array__().max(axis=1),
+        docs_keywords_emb))),keywords_emb)))
 
-    print("model keywords emb ...")
-    t1 = time.perf_counter()
-    keywords_emb = list(map(lambda x: get_words_emb(x),keywords))
-    t.append(time.perf_counter() - t1)
+    if grades.ndim ==3 and grades.shape[0] == 1:
+        grades = grades.reshape(grades.shape[1],-1)
 
-    s = list(map(lambda model_emb: 
-        list(map(lambda doc_emb: cos_sim(model_emb,doc_emb).__array__().max(axis=1), docs_keywords_emb)),keywords_emb))
-    
     # save the results
-    np.save(f'data/results/essaySet_{essay}_keywords_scores',np.array(s))
-    times[essay] = t
+    np.save(f'data/results/essaySet_{essay}_keywords_scores', grades)
     clear_output()
