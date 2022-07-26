@@ -13,6 +13,10 @@ NER_PATH = cfg['ner_path']
 LAST_LAYER_PATH = cfg['siamese_ner_model_path']
 DEBUGGING = cfg['debugging']
 
+if not DEBUGGING:
+    import warnings
+    warnings.filterwarnings('ignore')
+
 # load spacy model
 NER = spacy.load(NER_PATH)
 
@@ -47,7 +51,15 @@ class SIAMESENERGradingModel(object):
             Dict[str, str]: named entities and their types
                 key : named entity
                 value : entity type
+
+        example:
+            >>> __ner("Ahmed is a student")
+            {'Ahmed': 'PERSON'}
         """
+        # type check
+        if not isinstance(paragraph, str):
+            paragraph = str(paragraph)
+
         doc = NER(paragraph)
         res = {
             entity.text : entity.label_
@@ -87,7 +99,8 @@ class SIAMESENERGradingModel(object):
         # do in batches
         n_corpus = len(corpus)
         for i in range(0,n_corpus,batch):
-            print("Processing batch {}/{}".format(i//batch+1, (n_corpus//batch)+1))
+            if DEBUGGING:
+                print("Processing batch {}/{}".format(i//batch+1, (n_corpus//batch)+1))
             corpus_emb = self.model.encode(corpus[i:i+batch])
             corpus_ls.extend(corpus_emb)
         if n_corpus % batch != 0 and n_corpus > batch:
@@ -147,13 +160,12 @@ class SIAMESENERGradingModel(object):
         if not isinstance(entities, list):
             entities = [entities]
         #  entities contain stop words
-        grade = [True
-                for entity in entities
+        grade = [True for entity in entities
                 if entity in doc]
         try:
             return len(grade)/len(entities)
         except ZeroDivisionError:
-            return -1.0
+            return 0.0
 
     def pipeline(self: object,
         docs: List[str],
@@ -182,34 +194,32 @@ class SIAMESENERGradingModel(object):
         if exception_entites is None:
             exception_entites = EXCEPTION_ENTITES
 
-        #* 1)siamese similarty
+        #* 1) siamese
         embs = self.__embed_corpus(docs)
         model_answer_emb = embs[0]
         # embs[1:] is the rest of the embeddings for students
         sim_grades = self.__siamese_model(model_answer_emb.reshape(1,-1), embs[1:])
 
         #* 2) named entites
-        # grades = 2
-        # for self.model answer only
         # clean model answer before NER
         docs[0] = clean_doc_keep_float(docs[0])
+        # for model answer only
         named_entites = self.__ner(docs[0])
 
-        ner_grades = np.zeros(len(docs[1:]))
-        # length docs <= 2
-        if len(docs) <= 2:
-            ner_grades = np.zeros(1)
+        length = len(docs[1:])
+        if isinstance(docs[1:], str):
+            length = len([docs[1:]])
+        ner_grades = np.zeros(length)
 
         # if there are named entites in model answer
         if named_entites:
-            # grades += 1
             named_entites = list(filter(
                                     lambda x:
                                         x not in exception_entites
                                     ,named_entites
                                     ))
             # for all students answers
-            # * withouth stop words removals in students answer
+            # * without stop words removals in students answer
             ner_grades = np.array(list( map(lambda student_answer:
                     self.__match_grading(named_entites, student_answer)
                     , docs[1:])))
@@ -218,7 +228,10 @@ class SIAMESENERGradingModel(object):
                 return ner_grades.tolist()
 
         #* 3) machine learning model for wighted sum of the result
-        res = self.last_layer.predict(ner_grades , sim_grades)
+        if DEBUGGING:
+            print(sim_grades.shape, ner_grades.shape)
+            print(np.vstack((ner_grades , sim_grades)).T.shape)
+        res = self.last_layer.predict(np.vstack((ner_grades , sim_grades)).T)
         return res.tolist()
 
     def fit(self:object,
@@ -247,6 +260,10 @@ class SIAMESENERGradingModel(object):
         Args:
             path (str): path to save the model to
             if None then the model will be saved to the default path
+
+        example:
+            >>> model.save()
+            Model saved Successfully to models/model_rg.pkl.pickle
         """
         if path is None:
             path = LAST_LAYER_PATH
@@ -272,10 +289,16 @@ class SIAMESENERGradingModel(object):
             >>> model.predict(answers, ids, exception_entites=None)
             [0.5, 0.5]
         """
-        scores= self.pipeline(
+        if answers is None or ids is None:
+            raise ValueError("answers and ids must be provided")
+        if isinstance(answers, str):
+            answers = [answers]
+        if len(answers) != len(ids):
+            raise ValueError("every answers should be paired with an id")
+        if len(answers) <= 1:
+            raise ValueError("there should be at least 1 answer and the model-answer")
+
+        grades= self.pipeline(
                 docs=answers,
                 exception_entites=exception_entites)
-
-        # ! test for length
-        res = zip(ids[1:], scores)
-        return res
+        return zip(ids[1:], grades)
