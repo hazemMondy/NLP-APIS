@@ -5,7 +5,9 @@ from sentence_transformers.util import cos_sim
 from configs import configs as cfg
 
 DEBUGGING = cfg['debugging']
-
+if not DEBUGGING:
+    import warnings
+    warnings.filterwarnings('ignore')
 class PlagiarismModel(object):
     """PlagiarismModel"""
 
@@ -53,7 +55,8 @@ class PlagiarismModel(object):
         # do in batches
         n_corpus = len(corpus)
         for i in range(0,n_corpus,batch):
-            print("Processing batch {}/{}".format(i//batch+1, (n_corpus//batch)+1))
+            if DEBUGGING:
+                print("Processing batch {}/{}".format(i//batch+1, (n_corpus//batch)+1))
             corpus_emb = self.model.encode(corpus[i:i+batch])
             corpus_ls.extend(corpus_emb)
         if n_corpus % batch != 0 and n_corpus > batch:
