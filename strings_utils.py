@@ -3,6 +3,10 @@
 from typing import List
 import regex as re
 import numpy as np
+from configs import configs as cfg
+
+DEFAULT_WEIGHT = cfg['default_weight']
+DEFAULT_EMPTY_WEIGHT = cfg['default_empty_weight']
 
 def reverse_string(doc:str)->str:
     """
@@ -76,8 +80,9 @@ def clean_doc(doc:str, keywords:List[str], weights:List[float], enclosure:str):
     for i,keyword in enumerate(keywords):
         # get the end index of the keyword in the doc
         # and the next word after the keyword
-        key = enclosure + keyword + reverse_string(enclosure)
-        if weights[i] == np.nan:
+        key = enclosure + str(keyword) + reverse_string(enclosure)
+
+        if weights[i] in [DEFAULT_EMPTY_WEIGHT, DEFAULT_WEIGHT]:
             doc = doc.replace(key,"")
         else:
             doc = doc.replace(key + str(weights[i]), "")
