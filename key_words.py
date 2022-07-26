@@ -8,7 +8,7 @@ from configs import configs as cfg
 from strings_utils import reverse_string, match_keywords_in_doc
 
 DEFAULT_WEIGHT = cfg['default_weight']
-
+DEBUGGING = cfg['debugging']
 def maximal_marginal_relevance(doc_embedding: np.ndarray,
         word_embeddings: np.ndarray,
         words: List[str],
@@ -90,7 +90,8 @@ def candidates_tokens(
         candidates = count.get_feature_names()
     except ValueError as err:
         if "empty vocabulary" in str(err):
-            print("Empty vocabulary")
+            if DEBUGGING:
+                print(f"{doc} is Empty vocabulary")
         return [*set(doc.split())]
     return [*set(candidates)]
 
@@ -179,15 +180,15 @@ def match_keywords(
                     comb[1])).clip(-1, 1).round(6),
                     combination))
 
-    def fn_ (x: np.array):
+    def fn_ (sims: np.array):
         """
         return the no. of matched keywords
         """
-        if not np.sum(x>= thershold):
+        if not np.sum(sims >= thershold):
             return 0
-        if np.sum(x >= thershold) > 1.0:
+        if np.sum(sims >= thershold) > 1.0:
             return 1.0
-        return np.sum(x >= thershold)
+        return np.sum(sims >= thershold)
 
     # res = np.sum(np.array(list(map(fn_, similarities))))
     # 5.51 ms ± 59.7 µs per loop (mean ± std. dev. of 7 runs, 100 loops each) for 600 elements
@@ -215,7 +216,7 @@ def hard_keywords_grading(keywords:List[str],docs:List[str]):
     if not isinstance(keywords,list):
         keywords = [keywords]
     return np.array(list(map(lambda doc:
-        match_keywords_in_doc(keywords, doc),docs))) / len(keywords)
+        match_keywords_in_doc(keywords, doc),docs)))
 
 def get_weights_from_doc(doc:str, keywords:List[str], enclosure:str)->List[float]:
     """
@@ -248,6 +249,6 @@ def get_weights_from_doc(doc:str, keywords:List[str], enclosure:str)->List[float
             float(weight)
             weight = float(weight)
         except ValueError:
-            weight = np.nan
+            weight = DEFAULT_WEIGHT
         weights.append(weight)
     return weights
