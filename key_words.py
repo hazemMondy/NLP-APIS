@@ -64,11 +64,8 @@ def maximal_marginal_relevance(doc_embedding: np.ndarray,
 
     return [words[idx] for idx in keywords_idx]
 
-def candidates_tokens(
-    doc:str,
-    n_gram_range : Optional[
-        Tuple[int,int]]= (1,1))\
-    -> List[str]:
+def candidates_tokens(doc:str,
+    n_gram_range : Optional[ Tuple[int,int]]= (1,1)) -> List[str]:
     """
     extract candidates from a document
 
@@ -79,10 +76,15 @@ def candidates_tokens(
     Returns:
         List[str]: list of candidates words/phrases
     """
+    if doc is None:
+        return []
+
+    if n_gram_range is None:
+        n_gram_range = (1,1)
 
     stop_words = "english"
     # Extract candidate words/phrases
-    candidates = [doc]
+    # candidates = [doc]
     try:
         count = CountVectorizer(
             ngram_range=n_gram_range,
@@ -95,9 +97,7 @@ def candidates_tokens(
         return [*set(doc.split())]
     return [*set(candidates)]
 
-def get_n_grams(
-    keywords:List[str])\
-    -> List[Tuple[int,int]]:
+def get_n_grams(keywords: List[str]) -> List[ Tuple[int,int]]:
     """
     get n_gram range for each keyword
 
@@ -107,21 +107,19 @@ def get_n_grams(
     Returns:
         List[Tuple[int,int]]: list of n_gram range
     """
+    if keywords is None:
+        raise ValueError("keywords is None")
+
     # get ngrams for each keyword len
     # range ( len , len +1)
     # * removed redundents
-    n_gram_ranges = [*set(list(
-        map(lambda word : (
-            len(word.split()),
-            len(word.split())+1),
+    n_gram_ranges = [*set(list( map(lambda word :(
+            len(word.split()), len(word.split())+1),
             keywords)))]
     return sorted(n_gram_ranges)
 
-def get_candidates(
-    n_gram_ranges: List[
-        Tuple[int,int]],
-    paragraph:str)\
-        -> List[List[str]]:
+def get_candidates(n_gram_ranges: List[ Tuple[int,int]],
+    paragraph:str) -> List[ List[str]]:
     """
     get candidates for each keyword grams
 
@@ -132,7 +130,14 @@ def get_candidates(
     Returns:
         List[List[str]]: list of candidates
     """
-    # candidates = key_words.candidates_tokens(paragraph, n_gram_range=n_gram_range[0])
+    if n_gram_ranges is None:
+        raise ValueError("n_gram_ranges is None")
+    if not isinstance(n_gram_ranges,list):
+        raise ValueError("n_gram_ranges is not list")
+    if paragraph is None:
+        # it should return somthing to be able to parallelize
+        # with other answers
+        return [[] for i in range(len(n_gram_ranges))]
     # * paralel processing to get candidates
     candidates = list(map(lambda gram :
         candidates_tokens(str(paragraph), n_gram_range=gram)
@@ -213,8 +218,18 @@ def hard_keywords_grading(keywords:List[str],docs:List[str]):
         >>> hard_keywords_grading(["people", "theory"], ["people are awesome", "theory", "science"])
         >>> array([0.5, 0.5, 0.])
     """
+    if keywords is None:
+        raise ValueError("keywords is None")
+    if docs is None:
+        np.zeros((1,len(keywords)))
     if not isinstance(keywords,list):
         keywords = [keywords]
+    if len(keywords) == 0:
+        raise ValueError("keywords is empty")
+    if not isinstance(docs,list):
+        docs = [docs]
+    if len(docs) == 0:
+        return np.zeros((1,len(keywords)))
     return np.array(list(map(lambda doc:
         match_keywords_in_doc(keywords, doc),docs)))
 
@@ -231,18 +246,27 @@ def get_weights_from_doc(doc:str, keywords:List[str], enclosure:str)->List[float
         List[float]: list of weights
 
     example:
-        >>> doc = "hi my name is \"\"john\"\"4 and I am a student", ["john"]
+        >>> doc = "hi my name is \"\"john\"\"4 and I am a student"
         >>> enclosure = "\"\""
-        >>> get_weights_from_doc(doc, ["jhon"], enclosure)
-        >>> [1.0]
+        >>> get_weights_from_doc(doc, ["john"], enclosure)
+        [4.0]
     """
+    if keywords is None:
+        raise ValueError("keywords is None")
+    if doc is None:
+        raise ValueError("doc is None")
+    if enclosure is None:
+        raise ValueError("enclosure is None")
+    if len(keywords) == 0:
+        raise ValueError("keywords is empty")
     if not isinstance(keywords,list):
         keywords = [keywords]
+
     weights = []
     for keyword in keywords:
         # get the end index of the keyword in the doc
         # and the next word after the keyword
-        key = enclosure + keyword + reverse_string(enclosure)
+        key = enclosure + str(keyword) + reverse_string(enclosure)
         end_index = doc.find(key) + len(key)
         weight = doc[end_index:].split()[0]
         try:
