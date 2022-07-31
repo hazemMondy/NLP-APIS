@@ -15,7 +15,7 @@ class KeywordType(enum.Enum):
     def __repr__(self):
         return self.name.lower()
 
-def flatten(ls_ls:List[List[Any]])->List[Any]:
+def flatten(ls_ls:List[List[Any]], degree=2)->List[Any]:
     """
     Flatten a list of lists.
 
@@ -29,13 +29,24 @@ def flatten(ls_ls:List[List[Any]])->List[Any]:
         >>> flatten([[1,2],[3,4]])
         [1,2,3,4]
     """
-    out = []
-    for lis in ls_ls:
-        if isinstance(lis, list):
-            out.extend(lis)
-        else:
-            out.append(lis)
-    return out
+    if not isinstance(ls_ls, list) and not None:
+        raise TypeError("input must be a list")
+    if degree is None or degree < 1:
+        degree = 2
+
+    def _flatten(ls:List[Any])->List[Any]:
+        out = []
+        for lis in ls:
+            if isinstance(lis, list):
+                out.extend(lis)
+            else:
+                out.append(lis)
+        return out
+
+    for _ in range(degree-1):
+        ls_ls = _flatten(ls_ls)
+
+    return ls_ls
 
 def save_obj(obj:object, name:str, ext = '.pickle', path=None):
     """
@@ -45,6 +56,7 @@ def save_obj(obj:object, name:str, ext = '.pickle', path=None):
         obj (object): object to save
         name (str): name of the file
         ext (Optional[str]): extension of the file
+        path (Optional[str]): full path of the file with name
 
     Returns:
         None
@@ -64,6 +76,7 @@ def load_obj(name:str, ext = '.pickle', path=None)->object:
     Args:
         name (str): name of the file
         ext (Optional[str]): extension of the file
+        path (Optional[str]): full path of the file with name
 
     Returns:
         object: loaded object
