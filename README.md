@@ -11,6 +11,7 @@ python -m spacy download en_core_web_sm
 ```
 
 ## 2. Usage
+
 ### 2.1 *API side*
 ```python
 !python src/main.py
@@ -87,3 +88,50 @@ print(out.json())
 }
 
 ```
+
+### 2.2 *Individual classes*
+
+```python
+
+# has the encoder singleton
+import transformer_model
+# for grading
+import keywords_grading
+
+bert = transformer_model()
+KGM = keywords_grading(bert)
+
+answers = ["ahmed is eating a pizza",
+        "i go to school by bus",
+        "i am eating a pizza",
+        "ahmed is eating a pizza"
+        ]
+ids = [i in range(len(answers))]
+
+# call the pipeline
+KGM.predict(answers= answers ,
+        ids = ids,
+        )
+```
+
+```python
+{
+    "grades": {
+        "9": 0.177,
+        "10": 0.475,
+        "11": 0.93
+    }
+}
+```
+
+## 3. Data
+
+### 3.1 Grading
+
+>ASAP dataset
+
+### 3.1 Plagiarism
+
+> quora question pairs
+
+> arXiV
