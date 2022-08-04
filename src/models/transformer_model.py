@@ -2,7 +2,7 @@
 
 from typing import Optional
 from sentence_transformers import SentenceTransformer
-from configs import configs as cfg
+from configs.configs import configs as cfg
 
 # MODELPATH = 'xlm-r-distilroberta-base-paraphrase-v1'
 MODELPATH = cfg["encoder_path"]

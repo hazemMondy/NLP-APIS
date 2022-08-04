@@ -4,9 +4,9 @@ from typing import Optional, List, Dict, Set
 import numpy as np
 import spacy
 from sentence_transformers.util import cos_sim
-from utils import load_obj, save_obj
-from strings_utils import clean_doc_keep_float
-from configs import configs as cfg
+from utils.utils import load_obj, save_obj
+from utils.strings_utils import clean_doc_keep_float
+from configs.configs import configs as cfg
 
 EXCEPTION_ENTITES = cfg['exception_entities']
 NER_PATH = cfg['ner_path']

@@ -3,9 +3,9 @@
 from typing import List, Tuple, Dict, Optional
 import numpy as np
 from sentence_transformers.util import cos_sim
-import key_words
-from utils import flatten,load_obj,save_obj
-from configs import configs_keywords as cfg
+import utils.key_words as key_words
+from utils.utils import flatten,load_obj,save_obj
+from configs.configs import configs_keywords as cfg
 
 DEBUGGING = cfg['debugging']
 # PATH_TO_LAST_LAYER: path to the last layer classifier, regressor ...
@@ -331,6 +331,10 @@ class KeywordsGradingModel(object):
             if n_gram[0] > n_gram[1]:
                 raise ValueError("n_gram_range should start with the smaller number")
 
+        # if model answer is emnpty then raise error
+        if  len(answers[0].split()) < 1:
+            # raise ValueError("there should be at least 1 answer and the model-answer")
+            return zip(ids[1:], np.zeros(len(ids[1:])))
         students_keywords = self.keywords_exrtaction(answers[1:],n_gram_range,top_n,diversity)
         model_keywords = self.keywords_exrtaction(answers[0],n_gram_range,top_n,diversity)
         # pad the keywords

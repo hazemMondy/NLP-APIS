@@ -3,10 +3,10 @@ from typing import List, Tuple, Dict, Set, Optional
 import numpy as np
 from sentence_transformers.util import cos_sim
 from sklearn.feature_extraction.text import CountVectorizer
-import key_words
-from utils import flatten, KeywordType
-from strings_utils import get_str_between, clean_doc
-from configs import configs as cfg
+import utils.key_words as key_words
+from utils.utils import flatten, KeywordType
+from utils.strings_utils import get_str_between, clean_doc
+from configs.configs import configs as cfg
 
 DEBUGGING = cfg['debugging']
 MEDIUM_THRESHOLD = cfg['threshold_medium']

@@ -2,7 +2,7 @@
 from typing import Optional, List, Dict#, Tuple, Union
 import numpy as np
 from sentence_transformers.util import cos_sim
-from configs import configs as cfg
+from configs.configs import configs as cfg
 
 DEBUGGING = cfg['debugging']
 if not DEBUGGING:
