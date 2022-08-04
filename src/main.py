@@ -4,13 +4,13 @@ import json
 from fastapi import FastAPI
 import uvicorn
 from pydantic import BaseModel
-import transformer_model
-import keywords_grading
-import manual_keywords_grading
-import siamese_ner_grading
-import  plagiarism_model
-from api_utils import dict_to_list
-from configs import configs as cfg
+import models.transformer_model as transformer_model
+import models.keywords_grading as keywords_grading
+import models.manual_keywords_grading as manual_keywords_grading
+import models.siamese_ner_grading as siamese_ner_grading
+import models.plagiarism_model as plagiarism_model
+from utils.api_utils import dict_to_list
+from configs.configs import configs as cfg
 
 DEBUGGING = cfg["debugging"]
 if not DEBUGGING:
@@ -40,12 +40,12 @@ class StudentsDict(BaseModel):
         BaseModel : inherit from pydantic BaseModel to validate the input
 
     Attributes:
-        students_dict (dict): students_dict
+        essays_dict (dict): essays_dict
             contains dicts of the student's answers and their ids
         cased (bool): cased strings grading or not
 
     example:
-        >>> "students_dict": {
+        >>> "essays_dict": {
         >>>  "1235dx":
         >>>        "answer_1"
         >>>    "24463dxcf":
@@ -53,7 +53,7 @@ class StudentsDict(BaseModel):
         >>> }
         >>> "cased": False
     """
-    students_dict: Dict[str, str]
+    essays_dict: Dict[str, str]
     cased: bool = False
 class ESSAYSDICT(BaseModel):
     """
@@ -100,14 +100,17 @@ class PlagiarismResponse(BaseModel):
         BaseModel : inherit from pydantic BaseModel to validate the output
 
     Attributes:
+        List[ Dict[str, Dict[str,float]]]
+            List of Dictionaries of str [ids] : float [scores]
+
         scores (List[Dict[str, float]]): scores
             contains a list of dicts of the student's answers and their ids
 
     example:
-        >>> {
-        >>>     "ids": ["1", "2", "3"],
-        >>>     "scores": [0.5, 0.5, 0.5]
-        >>> }
+        >>> "plagiarism_results": [
+        >>>     {"1235dx": 0.9, "24463dxcf": 0.8},
+        >>>     {"1235dx": 0.8, "24463dxcf": 0.9}
+        >>> ]
     """
     plagiarism_results : List[ Dict[str, Dict[str,float]]]
 class GradingResponse(BaseModel):
@@ -123,7 +126,7 @@ class GradingResponse(BaseModel):
             contains a list of dicts of the student's grades and their ids
 
     example:
-        >>> "students_dict": {
+        >>> "essays_dict": {
         >>>  "1235dx":
         >>>        "answer_1"
         >>>    "24463dxcf":
@@ -192,14 +195,14 @@ def predict_grad(answers: ESSAYSDICT)\
     return {"grades":res}
 
 @app.post("/plagiarism/predict", response_model=PlagiarismResponse)
-def predict_plagiarism(students_dict: StudentsDict)\
+def predict_plagiarism(essays_dict: StudentsDict)\
     -> List[ Dict[str, Dict[str,float]]]:
     """
     Predict the pligarism result
 
     Args
     ----------
-    students_dict : dict[str,str]
+    essays_dict : dict[str,str]
         dict of student ids and their answers
 
     Returns
@@ -214,16 +217,11 @@ def predict_plagiarism(students_dict: StudentsDict)\
     >>> [{1: {2: 0.98}, 2: {1: 0.98}}]
 
     """
-    ids, answers = dict_to_list(students_dict.students_dict, students_dict.cased)
+    ids, answers = dict_to_list(essays_dict.essays_dict, essays_dict.cased)
     res = PM.predict(answers, ids)
     if DEBUGGING:
         print(res)
     return {"plagiarism_results":res}
 
 if __name__ == '__main__':
-
-    if not DEBUGGING:
-        print("DEBUGGING is ON")
-        uvicorn.run(app, host='127.0.0.1', port=8000)
-    else:
-        uvicorn.run(app, host='0.0.0.0', port=8080)
+    uvicorn.run(app, host='127.0.0.1', port=8080)
