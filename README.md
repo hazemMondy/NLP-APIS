@@ -2,22 +2,22 @@
 
 ## 1. Setup
 
-'''
+```
 pip install -r requirments.txt
 
 python src/models/model_download.py
 
 python -m spacy download en_core_web_sm
-'''
+```
 
 ## 2. Usage
 ### 2.1 *API side*
-'''python
+```python
 !python src/main.py
-'''
+```
 ### 2.1.1 *Plagiarsim*
 
-'''python
+```python
 
 import requests as req
 
@@ -34,9 +34,9 @@ inp = {"essays_dict":
 out = req.post(url, json=inp)
 
 print(out.json())
-'''
+```
 
-'''python
+```python
 
 {
     "plagiarism_results": [
@@ -53,11 +53,11 @@ print(out.json())
     ]
 }
 
-'''
+```
 
 ### 2.1.2 *Grading*
 
-'''python
+```python
 
 import requests as req
 
@@ -74,9 +74,9 @@ inp = {"essays_dict": {
 out = req.post(url, json=inp)
 
 print(out.json())
-'''
+```
 
-'''python
+```python
 
 {
     "grades": {
@@ -86,4 +86,4 @@ print(out.json())
     }
 }
 
-'''
+```
