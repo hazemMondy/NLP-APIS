@@ -135,3 +135,44 @@ KGM.predict(answers= answers ,
 > quora question pairs
 
 > arXiV
+
+## 4. Appindix
+### manual keywords grading model grammer
+
+***1) hard grading***
+
+**enclosure is ""**
+```python
+# NOTE: all weights are optional
+weight:float or None = 1.0
+
+example = f"\"\"keyword-phrase\"\""{weight}
+```
+>keywords are just matched with students answer if they contain them
+
+***2) soft grading***
+
+**enclosure is ""@**
+```python
+weight:float or None = 1.0
+example = f"\"\"@keyword-phrase@\"\"{weight}"
+```
+>students answers are splited in keyword-phrases' n_grams. Then encoded and get maximum similarity between them and the keyword-phrases if the similarity value > SOFT_THRESHOLD put to one else zero for each keyword-phrase
+
+***3) medium grading***
+
+**enclosure is ""@@**
+```python
+weight:float or None = 1.0
+example = f"\"\"@@keyword-phrase@@\"\"{weight}"
+```
+>students answers are splited in keyword-phrases' n_grams. Then encoded and get maximum similarity between them and the keyword-phrases if the similarity value > MEDUIM_THRESHOLD put to one else zero for each keyword-phrase
+
+
+***Note: that MEDUIM_THRESHOLD > SOFT_THRESHOLD***
+
+***Note: that you can combine the three grading types interchangeably***
+
+```python
+example = "\"\"@@keyword_one@@\"\" \"\"keyword_two\"\" rest of the sentence"
+```
