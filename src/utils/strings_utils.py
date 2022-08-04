@@ -3,7 +3,7 @@
 from typing import List
 import regex as re
 import numpy as np
-from configs import configs as cfg
+from configs.configs import configs as cfg
 
 DEFAULT_WEIGHT = cfg['default_weight']
 DEFAULT_EMPTY_WEIGHT = cfg['default_empty_weight']

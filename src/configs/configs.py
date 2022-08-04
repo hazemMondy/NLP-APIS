@@ -12,8 +12,9 @@ DEFAULT_WEIGHT = np.nan
 DEFAULT_EMPTY_WEIGHT = np.NINF
 EXCEPTION_ENTITES = set(["DATE","TIME","PERCENT","MONEY","QUANTITY","ORDINAL", "CARDINAL"])
 NER_PATH = 'en_core_web_sm'
-SIAMESE_NER_MODEL_PATH = 'models/model_rg.pickle'
-KWRDS_MODEL_PATH = 'models/kwrds_model.pickle'
+# D:\projects\NLP-APIS\models\kwrds_model.pickle
+SIAMESE_NER_MODEL_PATH = 'D:/projects/NLP-APIS/models/model_rg.pickle'
+KWRDS_MODEL_PATH = 'D:/projects/NLP-APIS/models/kwrds_model.pickle'
 ENCODER_PATH = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
 
 configs = {
