@@ -1,6 +1,6 @@
 import pytest
 import numpy as np
-import strings_utils
+import utils.strings_utils as strings_utils
 
 class TestStringsutilsReversestring(object):
     def test_reverse_string_happy(self):

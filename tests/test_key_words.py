@@ -1,6 +1,6 @@
 import pytest
 import numpy as np
-import key_words
+import utils.key_words as key_words
 
 class TestKeywordsGetweightsfromdoc(object):
     def test_get_weights_from_doc_happy_uncompeleted_floats(self):

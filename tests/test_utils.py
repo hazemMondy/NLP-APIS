@@ -1,5 +1,5 @@
 import pytest
-import utils
+import utils.utils as utils
 
 class TestUtilsFlatten(object):
     _message = lambda args: f"actual error message is: '{args[0]}' should be: '{args[1]}'"

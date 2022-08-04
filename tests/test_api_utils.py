@@ -1,4 +1,4 @@
-import api_utils
+import utils.api_utils as api_utils
 import pytest
 
 class TestApiutilsDicttolist:
