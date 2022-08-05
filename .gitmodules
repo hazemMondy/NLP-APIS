@@ -1,0 +1,3 @@
+[submodule "API-deployment-amazon-AMI-Guide"]
+	path = API-deployment-amazon-AMI-Guide
+	url = https://github.com/hazemMondy/API-deployment-amazon-AMI-Guide
